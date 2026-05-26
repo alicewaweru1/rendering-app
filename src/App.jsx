@@ -1,44 +1,63 @@
-import { useState, useEffect } from "react";
-import MovieItem from "./movieitem";
+import { useEffect, useState } from "react";
+import MovieList from "./MovieList";
+
+const starterMovies = [
+  { id: 1, title: "Interstellar", genre: "Sci-Fi", favorite: true, rating: 5 },
+  { id: 2, title: "The Godfather", genre: "Drama", favorite: false, rating: 4 },
+  { id: 3, title: "The Dark Knight", genre: "Action", favorite: true, rating: 5 },
+];
 
 function App() {
   const [movies, setMovies] = useState(() => {
-    const saved = localStorage.getItem("movies");
-    return saved ? JSON.parse(saved) : [];
-  });
+    const savedMovies = localStorage.getItem("movies");
 
+    if (savedMovies) {
+      return JSON.parse(savedMovies);
+    }
+
+    return starterMovies;
+  });
   const [title, setTitle] = useState("");
   const [genre, setGenre] = useState("Sci-Fi");
   const [search, setSearch] = useState("");
   const [editingId, setEditingId] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [isLoaded, setIsLoaded] = useState(false);
 
   useEffect(() => {
-    setTimeout(() => setLoading(false), 1500);
-  }, []);
+    const timer = window.setTimeout(() => setIsLoaded(true), 800);
 
+    return () => window.clearTimeout(timer);
+  }, []);
 
   useEffect(() => {
     localStorage.setItem("movies", JSON.stringify(movies));
   }, [movies]);
 
-  const handleSubmit = () => {
-    if (!title) return;
+  const handleSubmit = (event) => {
+    event.preventDefault();
+
+    if (!title.trim()) {
+      return;
+    }
 
     if (editingId) {
-      setMovies(movies.map(m =>
-        m.id === editingId ? { ...m, title, genre } : m
-      ));
+      setMovies((currentMovies) =>
+        currentMovies.map((movie) =>
+          movie.id === editingId ? { ...movie, title: title.trim(), genre } : movie
+        )
+      );
       setEditingId(null);
     } else {
-      const newMovie = {
-        id: Date.now(),
-        title,
-        genre,
-        favorite: false,
-        rating: 0
-      };
-      setMovies([...movies, newMovie]);
+      setMovies((currentMovies) => [
+        {
+          id: Date.now(),
+          title: title.trim(),
+          genre,
+          favorite: false,
+          rating: 0,
+        },
+        ...currentMovies,
+      ]);
     }
 
     setTitle("");
@@ -46,7 +65,7 @@ function App() {
   };
 
   const deleteMovie = (id) => {
-    setMovies(movies.filter(m => m.id !== id));
+    setMovies((currentMovies) => currentMovies.filter((movie) => movie.id !== id));
   };
 
   const editMovie = (movie) => {
@@ -56,190 +75,76 @@ function App() {
   };
 
   const toggleFavorite = (id) => {
-    setMovies(movies.map(m =>
-      m.id === id ? { ...m, favorite: !m.favorite } : m
-    ));
+    setMovies((currentMovies) =>
+      currentMovies.map((movie) =>
+        movie.id === id ? { ...movie, favorite: !movie.favorite } : movie
+      )
+    );
   };
-
 
   const rateMovie = (id, rating) => {
-    setMovies(movies.map(m =>
-      m.id === id ? { ...m, rating } : m
-    ));
+    setMovies((currentMovies) =>
+      currentMovies.map((movie) =>
+        movie.id === id ? { ...movie, rating } : movie
+      )
+    );
   };
 
-  const filteredMovies = movies.filter(m =>
-    m.title.toLowerCase().includes(search.toLowerCase())
+  const filteredMovies = movies.filter((movie) =>
+    movie.title.toLowerCase().includes(search.toLowerCase())
   );
 
-  if (loading) {
+  if (!isLoaded) {
     return <h2 className="loading">Loading movies...</h2>;
   }
 
   return (
-    <div className="container">
-      <h1>🎬 Movie Manager</h1>
+    <div className="app-shell">
+      <div className="container">
+        <div className="header-row">
+          <div>
+            <p className="eyebrow">React movie app</p>
+            <h1>🎬 Movie Manager</h1>
+            <p className="subtitle">Browse, add, edit, favorite, and remove movies in one place.</p>
+          </div>
+          <div className="count-badge">{movies.length} titles</div>
+        </div>
 
-      <input
-        type="text"
-        placeholder="Search movies..."
-        className="search"
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-      />
-
-      <div className="form">
         <input
           type="text"
-          placeholder="Movie title"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
+          placeholder="Search movies..."
+          className="search"
+          value={search}
+          onChange={(event) => setSearch(event.target.value)}
         />
 
-        <select value={genre} onChange={(e) => setGenre(e.target.value)}>
-          <option>Sci-Fi</option>
-          <option>Drama</option>
-          <option>Thriller</option>
-          <option>Romance</option>
-          <option>Action</option>
-        </select>
+        <form className="form" onSubmit={handleSubmit}>
+          <input
+            type="text"
+            placeholder="Movie title"
+            value={title}
+            onChange={(event) => setTitle(event.target.value)}
+          />
 
-        <button onClick={handleSubmit}>
-          {editingId ? "Update" : "Add"}
-        </button>
-      </div>
+          <select value={genre} onChange={(event) => setGenre(event.target.value)}>
+            <option>Sci-Fi</option>
+            <option>Drama</option>
+            <option>Thriller</option>
+            <option>Romance</option>
+            <option>Action</option>
+          </select>
 
-      {filteredMovies.map(movie => (
-        <MovieItem
-          key={movie.id}
-          movie={movie}
+          <button type="submit">{editingId ? "Update movie" : "Add movie"}</button>
+        </form>
+
+        <MovieList
+          movies={filteredMovies}
           deleteMovie={deleteMovie}
           editMovie={editMovie}
           toggleFavorite={toggleFavorite}
           rateMovie={rateMovie}
         />
-      ))}
-    </div>
-  );
-}
-
-function App() {
-  const [movies, setMovies] = useState(() => {
-    const saved = localStorage.getItem("movies");
-    return saved ? JSON.parse(saved) : [];
-  });
-
-  const [title, setTitle] = useState("");
-  const [genre, setGenre] = useState("Sci-Fi");
-  const [search, setSearch] = useState("");
-  const [editingId, setEditingId] = useState(null);
-  const [loading, setLoading] = useState(true);
-
-
-  useEffect(() => {
-    setTimeout(() => setLoading(false), 1500);
-  }, []);
-
-  useEffect(() => {
-    localStorage.setItem("movies", JSON.stringify(movies));
-  }, [movies]);
-
-  const handleSubmit = () => {
-    if (!title) return;
-
-    if (editingId) {
-      setMovies(movies.map(m =>
-        m.id === editingId ? { ...m, title, genre } : m
-      ));
-      setEditingId(null);
-    } else {
-      const newMovie = {
-        id: Date.now(),
-        title,
-        genre,
-        favorite: false,
-        rating: 0
-      };
-      setMovies([...movies, newMovie]);
-    }
-
-    setTitle("");
-    setGenre("Sci-Fi");
-  };
-
-  const deleteMovie = (id) => {
-    setMovies(movies.filter(m => m.id !== id));
-  };
-
-  const editMovie = (movie) => {
-    setTitle(movie.title);
-    setGenre(movie.genre);
-    setEditingId(movie.id);
-  };
-
-  const toggleFavorite = (id) => {
-    setMovies(movies.map(m =>
-      m.id === id ? { ...m, favorite: !m.favorite } : m
-    ));
-  };
-
-  const rateMovie = (id, rating) => {
-    setMovies(movies.map(m =>
-      m.id === id ? { ...m, rating } : m
-    ));
-  };
-
-  const filteredMovies = movies.filter(m =>
-    m.title.toLowerCase().includes(search.toLowerCase())
-  );
-
-  if (loading) {
-    return <h2 className="loading">Loading movies...</h2>;
-  }
-
-  return (
-    <div className="container">
-      <h1>🎬 Movie Manager</h1>
-
-      <input
-        type="text"
-        placeholder="Search movies..."
-        className="search"
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-      />
-
-      <div className="form">
-        <input
-          type="text"
-          placeholder="Movie title"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-        />
-
-        <select value={genre} onChange={(e) => setGenre(e.target.value)}>
-          <option>Sci-Fi</option>
-          <option>Drama</option>
-          <option>Thriller</option>
-          <option>Romance</option>
-          <option>Action</option>
-        </select>
-
-        <button onClick={handleSubmit}>
-          {editingId ? "Update" : "Add"}
-        </button>
       </div>
-
-      {filteredMovies.map(movie => (
-        <MovieItem
-          key={movie.id}
-          movie={movie}
-          deleteMovie={deleteMovie}
-          editMovie={editMovie}
-          toggleFavorite={toggleFavorite}
-          rateMovie={rateMovie}
-        />
-      ))}
     </div>
   );
 }
